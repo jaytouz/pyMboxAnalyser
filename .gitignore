@@ -1,0 +1,41 @@
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+#pycharm
+.idea/
+.idea
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+#log
+
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+#DATA
+data/*.mbox
+data/email_data.csv
+data/email_raw.csv
+
+#output
+output/csv_file/email_raw.csv
+output/csv_file/removed_email_from_decrypteur.csv
+
+output/log_file/url_cleaning.log
+output/pickle_obj/
+
