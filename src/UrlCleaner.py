@@ -67,7 +67,7 @@ class UrlCleaner:
     def remove_undesirable_domain(self):
         """retire les urls avec un domaine de la liste undesirable_domain"""
         urls_removed = []
-        format_log = "{email_id}, {url_removed}"
+        format_log = "{email_id},{url_removed}"
         spam_url_log = logging.getLogger('spam_url_log')
         for email_id, list_u in (zip(self.urls.index, self.urls)):
             if len(list_u) > 1 or list_u[0] != '':
@@ -75,12 +75,12 @@ class UrlCleaner:
                 for url_id, url in enumerate(list_u):
                     if url != '' and get_domain(url) in UrlCleaner.undesirable_domain:
                         self.urls[email_id][url_id] = ''
-                        log_message = "spam_url_log, " + format_log.format(email_id=email_id, url_removed=url)
+                        log_message = "spam_url_log," + format_log.format(email_id=email_id, url_removed=url)
                         spam_url_log.info(log_message)
                         urls_removed.append((email_id, url))
 
     def remove_repetition_of_domain(self, keep=5):
-        format_log = "{email_id}, {url_removed}"
+        format_log = "{email_id},{url_removed}"
         rep_url_log = logging.getLogger('rep_url_log')
         for email_id, list_u in (zip(self.urls.index, self.urls)):
             if len(list_u) > 1 or list_u[0] != '':
@@ -97,12 +97,12 @@ class UrlCleaner:
                     # s'il s'agit d'un domaine avec plus de 5 et qu'il y en a encore d'extra, supprimer en ordre d'apparition.
                     if dom_count[dom] > 5 and dom_extra_to_remove[dom] > 0:
                         self.urls[email_id][url_id] = ''
-                        log_message = "rep_url_removed, " + format_log.format(email_id=email_id, url_removed=url)
+                        log_message = "rep_url_removed," + format_log.format(email_id=email_id, url_removed=url)
                         rep_url_log.info(log_message)
                         dom_extra_to_remove[dom] -= 1
 
     def standardise_youtube_url(self):
-        format_log = "{old_url}, {new_url}"
+        format_log = "{old_url},{new_url}"
         y_logger = logging.getLogger('yt_url_modif')
         corrected = []
         for email_id, list_u in (zip(self.urls.index, self.urls)):
@@ -117,12 +117,12 @@ class UrlCleaner:
                             if video_id != 'not_a_video':
                                 new_url = f"https://www.youtube.com/watch?v={video_id}"
                                 self.urls[email_id][url_id] = new_url
-                                log_message = "yt_url_modif, " + format_log.format(old_url=url, new_url=new_url)
+                                log_message = "yt_url_modif," + format_log.format(old_url=url, new_url=new_url)
                                 y_logger.info(log_message)
                                 # print(email_id, " ---", video_id," --- ", url, " --- ", new_url)
 
     def standardise_facebook_page_id(self):
-        format_log = "{old_url}, {new_url}"
+        format_log = "{old_url},{new_url}"
         f_logger = logging.getLogger('fb_url_modif')
         for email_id, list_u in (zip(self.urls.index, self.urls)):
             if len(list_u) > 1 or list_u[0] != '':
@@ -135,7 +135,7 @@ class UrlCleaner:
                             if page_id is not None:
                                 new_url = f"https://www.facebook.com/{page_id}/"
                                 self.urls[email_id][url_id] = new_url
-                                log_message = "fb_url_modif, " + format_log.format(old_url=url, new_url=new_url)
+                                log_message = "fb_url_modif," + format_log.format(old_url=url, new_url=new_url)
                                 f_logger.info(log_message)
                                 # print(email_id, " ---", video id," --- ", url, " --- ", new_url)
 

@@ -31,10 +31,12 @@ class EmailDfBaseClass(object):
         """same as Pandas.DataFrame.tail()"""
         return self.df.tail(val)
 
+    @property
     def columns(self):
         """same as Pandas.DataFrame.columns"""
         return self.df.columns
 
+    @property
     def index(self):
         """same as Pandas.DataFrame.index"""
         return self.df.index
@@ -47,11 +49,12 @@ class EmailDfBaseClass(object):
         EmailDfBaseClass.filt('theme', with_values=['complot', 'bilan'], condition = 'or')
             retourne un objectDF contenant toutes les lignes où ont retrouve complot ou bilan dans la colonne theme.
         """
+        df = self.df.apply(deepcopy)  # needed because df contains python object
 
         condition_and = lambda values: all(v in values for v in with_values)  # si tous les themes demander
         condition_or = lambda values: any(v in values for v in with_values)  # si au moins un des thèmes demander
         condition = condition_and if condition == 'and' else condition_or  # choisir une des deux conditions
-        df_output = self.data[self.data[column].apply(condition)]
+        df_output = df[df[column].apply(condition)]
 
         return type(self)(df_output)  # permet de retrourner une instance du meme type
 
@@ -303,14 +306,33 @@ class EmailCorpus(EmailDfBaseClass):
     """
     Cette class permet de manipuler un pd.DataFrame avec
     des emails comme rangées et une colonne contenant tout le texte.
-
-    Cette class regroupe également le fonction pour nettoyer le texte lors
-    de la création de l'instance
-
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, corpus_df):
+        """
+        initiation d'une instance de EmailCorpus
+        :param corpus_df: pd.DataFrame une colonne text et des rangées d'email ou de temps selon l'unité
+        """
+        self.df = corpus_df
+
+    def from_emailDF(self, emailDF, by='email_id', sampling = 'D'):
+        """
+        Creation du corpus a partir d'un object EmailDF.
+        :param emailDF: instance de EmailDF
+        :param by: default = 'email_id', autre option, 'datetime'
+        :param sampling: si by = datetime, sampling peut être 'D', 'M', 'Y', 'W' etc voir doc pd.resampling
+        :return: EmailCorpus object
+        """
+        df = emailDF.df.apply(deepcopy)  # needed because df contains python object
+        if by == 'email_id':
+            corpus = df[['email_id', 'text']].set_index('email_id')
+            return EmailCorpus(corpus)
+
+        elif by == 'datetime':
+            corpus = df.set_index('datetime').resample(sampling).agg({'text': ' '.join})
+            return EmailCorpus(corpus)
+
+
 
 
 class EmailDTM(EmailDfBaseClass):
@@ -319,14 +341,45 @@ class EmailDTM(EmailDfBaseClass):
     fréquence d'échantillonnage choisis et chaque colonne correspond à un mot unique du corpus
     """
 
-    def __init__(self, df_dtm):
-        self.df_dtm
+    def __init__(self, dtm_df):
+        self.df = dtm_df
+
+    @property
+    def unique(self):
+        """toutes les valeurs de 1 ou plus sont converti en 1, car on s'intéresse au jour ou au courriel ou le mot
+        est apparu au moins une fois"""
+        df = self.df.copy()
+        df[df >= 1] = 1
+        return EmailDTM(df)
 
     @classmethod
-    def from_corpus(cls, df_corpus):
-        dtm = None
-        return EmailDTM(dtm)
+    def from_corpus(cls, emailCorpus):
+        """
+        Creation emailDTM d'une instance de EmailCorpus
+        :param emailCorpus:
+        :return: EmailDTM
+        """
+        from stop_words import get_stop_words
+        from sklearn.feature_extraction import text
+        from sklearn.feature_extraction.text import CountVectorizer
+        from TextCleaner import clean_text_for_analysis
 
+        #Mots qui n'ajoute pas de sens dans une phrase en Francais ou en anglais
+        french_stop_words = get_stop_words('french')
+        english_stop_words = list(text.ENGLISH_STOP_WORDS)
+        my_stop_words = french_stop_words + english_stop_words
+
+        corpus = emailCorpus.df.copy() #deepcopy du DataFrame
+        #nettoyer le text pour l'analyse
+        corpus['text'] = corpus['text'].apply(lambda text :  clean_text_for_analysis(text))
+
+        #creation de la matrix document terme (document term matrix)
+        cv = CountVectorizer(stop_words=my_stop_words)
+        data_cv = cv.fit_transform(corpus.text)
+        dtm_df = pd.DataFrame(data_cv.toarray(), columns=cv.get_feature_names())
+        dtm_df.index = corpus.index
+
+        return EmailDTM(dtm_df)
 
 if __name__ == '__main__':
     cwd = pathlib.PurePath(os.getcwd())
