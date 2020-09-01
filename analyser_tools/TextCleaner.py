@@ -1,3 +1,11 @@
+"""TextCleaner.py: Class avec les méthodes statiques pour manipuler le texte selon différente étape d'analyse
+des données
+
+__author__      = "Jérémie Tousignant"
+__copyright__   = "Copyright 2020, Radio-Canada"
+
+"""
+
 def encoding_correction(text):
     """Decoding error to replace manually"""
     to_replace = {"=E9": "é", "=E8": "è", "=C3=A9": "é", "=C3=89": 'é',

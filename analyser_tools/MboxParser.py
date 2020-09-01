@@ -1,6 +1,5 @@
 """MboxParser.py: access mbox object from mailbox module and iterate through
-    all emails to extract data one by one
-    using EmailParser
+    all emails to extract data one by one using EmailParser
 
 __author__      = "Jérémie Tousignant"
 __copyright__   = "Copyright 2020, Radio-Canada"

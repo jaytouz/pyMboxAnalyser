@@ -1,3 +1,10 @@
+"""UrlCleaner.py: Class pour standardiser les ULRS ou supprimés ceux qui sont du spams.
+
+__author__      = "Jérémie Tousignant"
+__copyright__   = "Copyright 2020, Radio-Canada"
+
+"""
+
 import re
 import logging
 
@@ -38,7 +45,6 @@ def get_count_domain(url):
 
 
 def find_youtube_video_id(url):
-    """root is the shortest urls"""
     if 'youtu.be' in url[:30]:  # pour s'assurer qu'on regarde la facon que le domain est ecrit
         search_res = re.findall("(?<=youtu.be/)[a-zA-Z0-9-_]+", url)
     else:

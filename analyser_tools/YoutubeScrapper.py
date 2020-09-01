@@ -1,3 +1,9 @@
+"""YoutubeScrapper.py: Class pour scrapper les urls de Youtube.
+
+__author__      = "Jérémie Tousignant"
+__copyright__   = "Copyright 2020, Radio-Canada"
+
+"""
 import pytube
 import requests
 import re
@@ -5,8 +11,9 @@ from bs4 import BeautifulSoup
 import TextCleaner
 
 
-class YoutubeScraper:
-
+class YoutubeScrapper:
+    """Scrapper pour la liste d'urls de Youtube passés dans le constructeur. Tag les urls en même temps selon le
+    dictonnaire de theme"""
     def __init__(self, url, dict_theme):
         self.url = url
         self.dict_theme = dict_theme

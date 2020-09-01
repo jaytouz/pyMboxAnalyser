@@ -1,10 +1,19 @@
+"""FacebookScrapper.py: Class pour scrapper les urls de Facebook.
+
+__author__      = "Jérémie Tousignant"
+__copyright__   = "Copyright 2020, Radio-Canada"
+
+"""
+
 import requests
 import re
 from bs4 import BeautifulSoup
 import TextCleaner
 
 
-class FacebookScraper:
+class FacebookScrapper:
+    """Scrapper pour la liste d'urls de facebook passés dans le constructeur. Tag les urls en même temps selon le
+    dictonnaire de theme"""
 
     def __init__(self, url, dict_theme):
         self.soup = None

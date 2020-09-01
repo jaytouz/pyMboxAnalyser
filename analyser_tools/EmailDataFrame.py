@@ -1,6 +1,14 @@
-import logging
-from typing import Any, Tuple
+"""EmailDataFrame.py: Class principal. Chaque class est construite pour interagir avec un dataframe particulier, soit de
+email, d'url, un corpus ou un document term matrix (les deux derniers sont pour l'analyse des mots dans le texte).
 
+__author__      = "Jérémie Tousignant"
+__copyright__   = "Copyright 2020, Radio-Canada"
+
+"""
+
+
+
+import logging
 import pandas as pd
 import numpy as np
 from copy import deepcopy
