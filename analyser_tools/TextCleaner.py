@@ -134,6 +134,24 @@ def standardize_text(text):
 def get_word_variation(word):
     return [word, find_french_feminine_of_word(word), find_french_plural_of_word(word)]
 
+def words_in(words_to_find, text):
+    """regarde si une combinaison de n mot est dans la liste de combinaison de mot. Fonctionne pour des ngrams de 2 ou 3
+    :param words_to_find: string "je suis"
+    :param text: text a decouper en ngram
+    """
+    import re
+    in_list = False
+
+    ngram_to_find = tuple(words_to_find.lower().split(' '))
+    words = re.findall('\w+', text.lower())
+    if len(ngram_to_find) == 2:
+        list_ngram = zip(words, words[1:])
+    elif len(ngram_to_find) == 3:
+        list_ngram = zip(words, words[1:], words[2:])
+
+    if ngram_to_find in list_ngram:
+        in_list = True
+    return in_list
 
 def word_in(word_to_find, text):
     """
@@ -159,6 +177,16 @@ def word_in(word_to_find, text):
         in_list = True
     return in_list
 
+def string_in_text(s, text):
+    """prend un string et retourne vrai si les mots sont dans texte. Appelle la fonction pour traiter plusieurs mots
+     consecutif (3 max) si necessaire"""
+    in_list = False
+    if len(s.split()) > 1:
+        in_list = words_in(s, text)
+    else:
+        #regarde pour un mot, mais aussi pour sa version feminin et pluriel
+        in_list = word_in(s, text)
+    return in_list
 
 def find_french_plural_of_word(word):
     """retourne la version pluriel du mot selon les règles suivantes:

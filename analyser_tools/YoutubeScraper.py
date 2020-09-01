@@ -81,7 +81,7 @@ class YoutubeScraper:
         text = ' '.join([title, description])
         text = TextCleaner.clean_text_for_analysis(text)
         for theme, theme_words in zip(self.dict_theme.keys(), self.dict_theme.values()):
-            in_list = any(TextCleaner.word_in(w, text) for w in theme_words)
+            in_list = any(TextCleaner.string_in_text(s, text) for s in theme_words)
             if in_list:
                 url_theme.append(theme)
         self.theme = url_theme

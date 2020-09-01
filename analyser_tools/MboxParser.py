@@ -91,7 +91,7 @@ class MboxParser:
                     file_ext = EmailParser.get_file_ext(content_type)
                     EmailParser.save_attachment(path, raw_content, em_id, attach_id, file_ext)
 
-    def export(self, path, filename, file_ext='csv', attrs='data', sep=','):
+    def export(self, path, file_ext='csv', attrs='data', sep=','):
         """
         :param path:
         :param filename:
@@ -103,16 +103,11 @@ class MboxParser:
 
         df = pd.DataFrame(data_dict)
 
-        if path is None:
-            path = PureWindowsPath(os.getcwd() + '\\output\\')
-        else:
-            path = PureWindowsPath(os.getcwd() + path)
-
         if not os.path.exists(path):
             os.makedirs(path)
 
         if file_ext == 'csv':
-            df.to_csv(path / (filename + ".csv"), sep=sep, encoding='utf-8')
+            df.to_csv(path, index = False, sep=sep, encoding='utf-8')
 
 
 if __name__ == "__main__":

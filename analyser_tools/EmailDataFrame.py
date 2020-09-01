@@ -1,10 +1,14 @@
 import logging
+from typing import Any, Tuple
+
 import pandas as pd
 import numpy as np
 from copy import deepcopy
 import pathlib
 import os
 
+import UrlCleaner
+import TextCleaner
 
 
 
@@ -58,34 +62,37 @@ class EmailDfBaseClass(object):
 
         return type(self)(df_output)  # permet de retrourner une instance du meme type
 
-    def read_dict_theme_from_csv(self, csv_path):
-        """a partir d'un dataframe ou chaque colonne est un theme et chaque ligne/valeur est un mot du theme
-        self.theme est simplement un dictionnaire où la key est le thème et la valeur est la liste de mots du thème
-        """
-        # TODO test pour voir si ça fonctionne. Une fois le theme ajouter, est-ce que creer une nouvelle instance modifie la variable?
-        theme_raw = pd.read_csv(f"{csv_path}.csv")
-        dict_theme = theme_raw.to_dict(orient='list')
-        for theme in dict_theme.keys():
-            dict_theme[theme] = [word for word in dict_theme[theme] if str(word) != 'nan']
-        EmailDfBaseClass.theme = dict_theme
 
     def to_clipboard(self):
         """same as Pandas.DataFrame.to_clipboard()"""
         self.df.to_clipboard()
 
-    def to_csv(self, file_name, output_path=None, index = False):
+    def to_csv(self, output_path=None, index = False):
         """output_path must be constructed with pathlib module, save the dataframe in the instance to csv"""
-        if output_path is None or issubclass(type(output_path), pathlib.PurePath):
-            output_path = pathlib.PurePath(os.getcwd()).parent / 'output' / 'csv_file' / '.'.join([file_name,'csv'])
-            self.df.to_csv(output_path, index=index)
-        else:
-            self.df.to_csv(output_path + file_name + '.csv')
+        self.df.head()
+        self.df.to_csv(output_path, index=index)
+
 
     def to_pickle(self, output_file):
         import pickle
         with open(f"{output_file}.pickle", 'wb') as f:
             pickle.dump(self, f)
         print(f'{type(self)} instance saved to pickle at {output_file}')
+
+    @classmethod
+    def read_dict_theme_from_csv(self, csv_path):
+        """a partir d'un dataframe ou chaque colonne est un theme et chaque ligne/valeur est un mot du theme
+        self.theme est simplement un dictionnaire où la key est le thème et la valeur est la liste de mots du thème
+        """
+        try:
+            theme_raw = pd.read_csv(f"{csv_path}")
+        except UnicodeDecodeError:
+            theme_raw = pd.read_csv(f"{csv_path}", encoding='iso-8859-1')
+
+        dict_theme = theme_raw.to_dict(orient='list')
+        for theme in dict_theme.keys():
+            dict_theme[theme] = [word for word in dict_theme[theme] if str(word) != 'nan']
+        EmailDfBaseClass.theme = dict_theme
 
     @classmethod
     def from_pickle(self, pickle_path):
@@ -96,20 +103,15 @@ class EmailDfBaseClass(object):
         return obj
 
     @classmethod
-    def from_csv(cls, csv_path=None, index_col = 0, converters={}, parse_dates=['datetime']):
+    def from_csv(cls, csv_path, index_col = None, converters={}, parse_dates=['datetime']):
         """read dataframe from csv, converter are used to convert list-like cell from string format
         to list-like python object, parse_dates should be ['datetime'] unless if there's no column datetime"""
-        import pathlib
-        import os
-
-        if csv_path is None:
-            csv_path = pathlib.Path(os.getcwd() + "\\output") / "email_raw.csv"
 
         df = pd.read_csv(csv_path, index_col=index_col, parse_dates=parse_dates, converters=converters)
         # necessaire pour permettre le resampling
         if parse_dates is not None and 'datetime' in parse_dates:
             df['datetime'] = df['datetime'].apply(lambda x: x.replace(tzinfo=None))
-        return EmailDF(df_email=df)
+        return cls(df)
 
 
 class EmailDF(EmailDfBaseClass):
@@ -124,6 +126,11 @@ class EmailDF(EmailDfBaseClass):
 
     def __init__(self, df_email):
         super().__init__(df_email)
+
+    @property
+    def email_per_day(self):
+        df = self.df.apply(deepcopy)  # needed because df contains python object
+        return df.set_index('datetime').resample('D').count()['email_id']
 
     def filt_by_date(self, start_date: tuple, end_date: tuple):
         """
@@ -225,7 +232,7 @@ class EmailDF(EmailDfBaseClass):
         """Tag les courriels en fonction de la variable EmailDfBaseClass.theme. Recherche le mot, son féminin ou pluriel
         dans la colonne text. Avant la recherche du mot, le text est corrigé pour l'analyser, voir le module
          TextCleaner pour plus de détail sur la fonctionRetourne l'instance avec la nouvelle colonne de theme."""
-        from TextCleaner import clean_text_for_analysis, word_in
+        from TextCleaner import clean_text_for_analysis, string_in_text
         from tqdm import tqdm
 
         print('tagging theme to email')
@@ -238,7 +245,8 @@ class EmailDF(EmailDfBaseClass):
             text = clean_text_for_analysis(text)
             for theme, theme_words in zip(self.theme.keys(),
                                           self.theme.values()):  # TODO tester pour voir si c'est accessible dans l'instance ou si je dois appeler la class
-                in_list = any(word_in(w, text) for w in theme_words)
+
+                in_list = any(string_in_text(s, text) for s in theme_words)
                 if in_list:
                     email_theme.append(theme)
             theme_array.append(email_theme)
@@ -252,6 +260,89 @@ class EmailDF(EmailDfBaseClass):
         df = self.df.apply(deepcopy)  # needed because df contains python object
         df['source'] = df['domain']
         df['source'].apply(set).apply(list)
+        return EmailDF(df_email=df)
+
+    def groupby_theme(self, prop=True):
+
+        data = {theme: self.filt('theme', with_values=[theme]).df.shape[0] for theme in
+                self.theme.keys()}
+        if prop:
+            return pd.Series(data) /self.df.shape[0] * 100
+        else:
+            return pd.Series(data)
+
+    def theme_per_day(self, pourc=True):
+        """assemble les themes par jour et retour un dataframe avec comme index les journées,
+        comme colonnes les themes et comme valeur la fréquence d'apparition de chaque thème dans la journeé"""
+        df_per_day = self.df.set_index(pd.DatetimeIndex(self.df['datetime'])).resample('D').agg({'theme': sum})
+        data = {theme: [] for theme in self.theme.keys()}
+        for d in df_per_day.index:
+            for theme in self.theme.keys():
+                if df_per_day.loc[d, 'theme'] == 0:
+                    count = 0
+                else:
+                    count = df_per_day.loc[d, 'theme'].count(theme)
+                data[theme].append(count)
+
+        if pourc:
+            return pd.DataFrame(data, index=df_per_day.index).apply(lambda s : s/self.email_per_day * 100)
+
+        else:
+            return pd.DataFrame(data, index=df_per_day.index)
+
+    def groupby_word_in_theme(self):
+        """:return multiindex level 0 = theme, level 1 = word in theme, value = num_email with word in theme"""
+        from TextCleaner import get_word_variation
+
+        def multiindex_from_theme(theme):
+            index = []
+            for t in theme.keys():
+                for word in theme[t]:
+                    index.append((t, word))
+            return pd.MultiIndex.from_tuples(index)
+
+        multiindex = multiindex_from_theme(self.theme)
+        data = {theme_word: self.filt('text', with_values=get_word_variation(
+            theme_word[1]), condition='or').df.shape[0] for theme_word in multiindex}
+
+        return pd.Series(data)
+
+    def add_theme_manually(self, series):
+        # TODO pas encore tester, c'est en prévision de l'ajout des courriels non tagger par le programme
+        """pass a series of email_id and list of theme to correct theme"""
+        if type(series.iloc[0]) != list:
+            series = series.apply(lambda x: x.strip("[]").replace("'", "").strip().split(', '))
+        self.data['theme'] = series
+
+    def add_source_manually(self, series):
+        # TODO pas encore tester, c'est en prévision de l'ajout des courriels non tagger par le programme
+        """pass a series of email_id and list of theme to correct theme"""
+        if type(series.iloc[0]) == str:
+            series = series.apply(lambda x: x.strip("[]").replace("'", "").strip().split(', '))
+        self.data['source'] = series
+
+    def update_theme_using_urls_tag(self, url_df, url_from_domain):
+        """regarde dans les urls scraper s'il y a des themes qui n'etait pas detecte seulement
+        avec le texte du email
+
+        :param url_df: UrlDF instance, obtenu d'un scrapper d'info d'urls
+        :param url_from_domain: domain des urls scrapper avec des themes a regarder"""
+        df = self.df.apply(deepcopy)  # needed because df contains python object
+        for idx in df.index:
+            theme_before = df.loc[idx, 'theme']
+            # parcourir les emails
+            theme_url = []
+            # si un domain est facebook ou youtube, voir les theme associes a l'url dans url_df
+            if url_from_domain in df.loc[idx, 'domain']:
+                for url in df.loc[idx, 'urls']:
+                    if url in url_df.index:
+                        url_theme = url_df.df[url_df.df.url == url]['theme']
+                        for theme in url_theme:
+                            # aller chercher les themes trouves
+                            theme_url.append(theme)
+            # parmis les themes trouves, on ajoute seulement ceux qui ne sont pas deja la.
+                df.at[idx,'theme'] = list(set(theme_before + theme_url))
+                # print(theme_before==list(set(theme_before + theme_url)))
         return EmailDF(df_email=df)
 
     @classmethod
@@ -273,19 +364,6 @@ class EmailDF(EmailDfBaseClass):
         df['datetime'] = df['datetime'].apply(lambda x: x.replace(tzinfo=None))
         return EmailDF(df_email=df)
 
-    def add_theme_manually(self, series):
-        # TODO pas encore tester, c'est en prévision de l'ajout des courriels non tagger par le programme
-        """pass a series of email_id and list of theme to correct theme"""
-        if type(series.iloc[0]) != list:
-            series = series.apply(lambda x: x.strip("[]").replace("'", "").strip().split(', '))
-        self.data['theme'] = series
-
-    def add_source_manually(self, series):
-        # TODO pas encore tester, c'est en prévision de l'ajout des courriels non tagger par le programme
-        """pass a series of email_id and list of theme to correct theme"""
-        if type(series.iloc[0]) == str:
-            series = series.apply(lambda x: x.strip("[]").replace("'", "").strip().split(', '))
-        self.data['source'] = series
 
 
 class UrlDF(EmailDfBaseClass):
@@ -301,6 +379,33 @@ class UrlDF(EmailDfBaseClass):
     def __init__(self, df_url):
         super().__init__(df_url)
 
+    def update_theme(self, using_col = 'description'):
+        """Tag les courriels en fonction de la variable EmailDfBaseClass.theme. Recherche le mot, son féminin ou pluriel
+        dans la colonne using_col. Avant la recherche du mot, le text est corrigé pour l'analyser, voir le module
+         TextCleaner pour plus de détail sur la fonctionRetourne l'instance avec la nouvelle colonne de theme.
+
+         :param using_col: nom de la colonne a utiliser pour tagger les themes.
+         """
+        from TextCleaner import clean_text_for_analysis, string_in_text
+        from tqdm import tqdm
+
+        print('updating theme to urlDf')
+        df = self.df.apply(deepcopy)  # needed because df contains python object
+        theme_array = []
+        for idx in tqdm(df.index):
+            url_theme = []
+            text = df.loc[idx, using_col]
+            # retire certain mot commun dans les courriels, repetition de 5 chiffres +, lettre seul
+            text = clean_text_for_analysis(str(text))
+            for theme, theme_words in zip(self.theme.keys(),
+                                          self.theme.values()):
+                in_list = any(string_in_text(s, text) for s in theme_words)
+                if in_list:
+                    url_theme.append(theme)
+            theme_array.append(url_theme)
+        df['theme'] = theme_array
+        return UrlDF(df_url=df)
+
 
 class EmailCorpus(EmailDfBaseClass):
     """
@@ -308,14 +413,18 @@ class EmailCorpus(EmailDfBaseClass):
     des emails comme rangées et une colonne contenant tout le texte.
     """
 
-    def __init__(self, corpus_df):
+    def __init__(self, corpus_df, by, sampling):
         """
         initiation d'une instance de EmailCorpus
         :param corpus_df: pd.DataFrame une colonne text et des rangées d'email ou de temps selon l'unité
         """
-        self.df = corpus_df
+        super().__init__(corpus_df)
+        self.by = by
+        self.sampling = sampling
 
-    def from_emailDF(self, emailDF, by='email_id', sampling = 'D'):
+
+    @classmethod
+    def from_emailDF(cls, emailDF, by='email_id', sampling = 'D'):
         """
         Creation du corpus a partir d'un object EmailDF.
         :param emailDF: instance de EmailDF
@@ -323,14 +432,15 @@ class EmailCorpus(EmailDfBaseClass):
         :param sampling: si by = datetime, sampling peut être 'D', 'M', 'Y', 'W' etc voir doc pd.resampling
         :return: EmailCorpus object
         """
+        print('creating corpus from emailDf')
         df = emailDF.df.apply(deepcopy)  # needed because df contains python object
         if by == 'email_id':
             corpus = df[['email_id', 'text']].set_index('email_id')
-            return EmailCorpus(corpus)
+            return EmailCorpus(corpus, by='email_id', sampling = sampling)
 
         elif by == 'datetime':
             corpus = df.set_index('datetime').resample(sampling).agg({'text': ' '.join})
-            return EmailCorpus(corpus)
+            return EmailCorpus(corpus, by='email_id', sampling = sampling)
 
 
 
@@ -341,8 +451,9 @@ class EmailDTM(EmailDfBaseClass):
     fréquence d'échantillonnage choisis et chaque colonne correspond à un mot unique du corpus
     """
 
-    def __init__(self, dtm_df):
-        self.df = dtm_df
+    def __init__(self, dtm_df, corpus_df):
+        super().__init__(dtm_df)
+        self.corpus_df = corpus_df
 
     @property
     def unique(self):
@@ -350,7 +461,59 @@ class EmailDTM(EmailDfBaseClass):
         est apparu au moins une fois"""
         df = self.df.copy()
         df[df >= 1] = 1
-        return EmailDTM(df)
+        return EmailDTM(df, self.corpus_df).df
+
+
+    def proportion(self, email_per_day):
+        return self.df.apply(lambda x: (x / email_per_day) * 100)
+
+
+    def update_dtm_with_dict_theme(self):
+        """ajoute les éléments du dict de theme qui sont composés de plusieurs mots."""
+        #TODO vraiment pas efficient... faudrait creer un petit dataframe avec les nouvelles colonnes a ajouter et ensuite concat puis retourner l'instance de emailDTM
+
+        for theme in self.theme.keys():
+            for word in self.theme[theme]:
+                if len(word.split()) > 1:
+                    ngram = tuple(word.lower().split())
+                    self.add_ngram_colunm(ngram)
+        return EmailDTM(self.df, self.corpus_df)
+
+    def add_ngram_colunm(self, ngram_tuple):
+        """ajoute une colonne dans le dtm correspondant à une suite de mot"""
+        from Errors import NGramTooLarge
+        n = len(ngram_tuple) #
+        if n > 5:
+            raise NGramTooLarge
+        col_name = ' '.join(ngram_tuple)
+        data = []
+        print("adding " + col_name + " to dtm")
+        for idx in self.corpus_df.index:
+            list_ngram = EmailDTM.list_word_ngram(n, self.corpus_df.loc[idx,'text'])
+            count = list_ngram.count(ngram_tuple)
+            data.append(count)
+        self.df[col_name] = data
+
+
+    @staticmethod
+    def list_word_ngram(n, text):
+        """
+        Decoupe le texte en sequence de ngram. Retourne une liste de tuple
+        :param n:
+        :param text:
+        :return:
+        """
+        import re
+        words = re.findall('\w+', text.lower())
+        if n == 2:
+            list_ngram = zip(words, words[1:])
+        elif n== 3:
+            list_ngram = zip(words, words[1:], words[2:])
+        elif n== 4:
+            list_ngram = zip(words, words[1:], words[2:], words[3:])
+        elif n == 5:
+            list_ngram = zip(words, words[1:], words[2:], words[3:], words[4:])
+        return list(list_ngram)
 
     @classmethod
     def from_corpus(cls, emailCorpus):
@@ -359,15 +522,23 @@ class EmailDTM(EmailDfBaseClass):
         :param emailCorpus:
         :return: EmailDTM
         """
+        print("creating dtm from corpus")
         from stop_words import get_stop_words
         from sklearn.feature_extraction import text
         from sklearn.feature_extraction.text import CountVectorizer
+
         from TextCleaner import clean_text_for_analysis
 
         #Mots qui n'ajoute pas de sens dans une phrase en Francais ou en anglais
         french_stop_words = get_stop_words('french')
         english_stop_words = list(text.ENGLISH_STOP_WORDS)
         my_stop_words = french_stop_words + english_stop_words
+
+        #s'assurer qu'aucun mot des themes n'est dans les stop words ex: état
+        for t in emailCorpus.theme.keys():
+            for w in emailCorpus.theme[t]:
+                if w.lower() in my_stop_words:
+                    my_stop_words.remove(w.lower())
 
         corpus = emailCorpus.df.copy() #deepcopy du DataFrame
         #nettoyer le text pour l'analyse
@@ -379,7 +550,7 @@ class EmailDTM(EmailDfBaseClass):
         dtm_df = pd.DataFrame(data_cv.toarray(), columns=cv.get_feature_names())
         dtm_df.index = corpus.index
 
-        return EmailDTM(dtm_df)
+        return EmailDTM(dtm_df, corpus)
 
 if __name__ == '__main__':
     cwd = pathlib.PurePath(os.getcwd())
