@@ -4,7 +4,7 @@ This project was created to analyse email from the Decrypteur at Radio-Canada. T
 
 The code allows to parse mbox file from google takeout to csv file. It extract data such as TO, FROM, DATE, BODY, SUBJECT, ATTACHMENT, ATTACHMENT_TYPE. This functionality is build in the EmailParser dans MboxParser.
 
-Furthermore, specific analytic tools where build to clean the data for analysis (EmailDataCleaner), add more data from Facebook urls (FacebookScraper), Youtube urls (YoutubeSraper). 
+Furthermore, specific analytic tools where build to clean and search the data for analysis (EmailDataFrame), add more data from Facebook urls (FacebookScraper), Youtube urls (YoutubeSraper). 
 
 
 - analyser_tools : Data structure and functions used in the notebooks
