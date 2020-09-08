@@ -6,3 +6,7 @@ The code allows to parse mbox file from google takeout to csv file. It extract d
 
 Furthermore, specific analytic tools where build to clean the data for analysis (EmailDataCleaner), add more data from Facebook urls (FacebookScraper), Youtube urls (YoutubeSraper). 
 
+
+analyser_tools : Data structure and functions used in the notebooks
+data : Data for input in the analysis (.mbox, theme_words.csv)
+output : Graph, csv, log, pickle (not everything is on the github for privacy concerns)
