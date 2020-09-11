@@ -561,33 +561,37 @@ class EmailDTM(EmailDfBaseClass):
         return EmailDTM(dtm_df, corpus)
 
 if __name__ == '__main__':
-    cwd = pathlib.PurePath(os.getcwd())
-    project_root_dir = cwd.parent
-    theme_path = project_root_dir / "data" / "theme_words"
-    email_raw_path = project_root_dir / "output" / 'csv_file' / 'email_raw.csv'
-    facebook_url_info_path = project_root_dir / 'output' / 'csv_file' / 'facebook_urls_info.csv'
-    youtube_url_info_path = project_root_dir / 'output' / 'csv_file' / 'youtube_urls_info.csv'
-    log_file_path = project_root_dir / 'output' / 'log_file' / 'url_cleaning.log'
-    removed_email_path = project_root_dir / 'output' / 'csv_file' / 'removed_email_from_decrypteur.csv'
-    dataclean_pickle_path = project_root_dir / 'output' / 'pickle_obj' / 'dataClean'
+    print('start')
+    # VOIR NOTEBOOK POUR UTILISATION
 
-    logging.basicConfig(filename=log_file_path, format="%(message)s", filemode='w', level=logging.INFO)
 
-    email_raw_converters = {"attach_type": lambda x: x.strip("[]").replace("'", "").lower().strip().split(", "),
-                            "urls": lambda x: x.strip("[]").replace("'", "").strip().split(', ')
-                            }
-    email_df_raw = EmailDF.from_csv(csv_path=email_raw_path, converters=email_raw_converters)
-    email_df_raw.read_dict_theme_from_csv(theme_path)
-
-    email_df = (email_df_raw.filt_by_date(start_date=(2020, 3, 1), end_date=(9999, 12, 30))
-                .remove_email_by_from(logpath=removed_email_path)
-                .clean_urls()
-                .add_domain_column()
-                .add_has_url_column()
-                .add_text_column()
-                .add_theme_column()
-                .add_source_column())
-
-    fb_yt_converter = {'theme': lambda x: x.strip("[]").replace("'", "").strip().split(', ')}
-    fb_df = UrlDF.from_csv(facebook_url_info_path, 1, fb_yt_converter, parse_dates=None)
-    yt_df = UrlDF.from_csv(youtube_url_info_path, 1, fb_yt_converter, parse_dates=None)
+    # cwd = pathlib.PurePath(os.getcwd())
+    # project_root_dir = cwd.parent
+    # theme_path = project_root_dir / "data" / "theme_words"
+    # email_raw_path = project_root_dir / "output" / 'csv_file' / 'email_raw.csv'
+    # facebook_url_info_path = project_root_dir / 'output' / 'csv_file' / 'facebook_urls_info.csv'
+    # youtube_url_info_path = project_root_dir / 'output' / 'csv_file' / 'youtube_urls_info.csv'
+    # log_file_path = project_root_dir / 'output' / 'log_file' / 'url_cleaning.log'
+    # removed_email_path = project_root_dir / 'output' / 'csv_file' / 'removed_email_from_decrypteur.csv'
+    # dataclean_pickle_path = project_root_dir / 'output' / 'pickle_obj' / 'dataClean'
+    #
+    # logging.basicConfig(filename=log_file_path, format="%(message)s", filemode='w', level=logging.INFO)
+    #
+    # email_raw_converters = {"attach_type": lambda x: x.strip("[]").replace("'", "").lower().strip().split(", "),
+    #                         "urls": lambda x: x.strip("[]").replace("'", "").strip().split(', ')
+    #                         }
+    # email_df_raw = EmailDF.from_csv(csv_path=email_raw_path, converters=email_raw_converters)
+    # email_df_raw.read_dict_theme_from_csv(theme_path)
+    #
+    # email_df = (email_df_raw.filt_by_date(start_date=(2020, 3, 1), end_date=(9999, 12, 30))
+    #             .remove_email_by_from(logpath=removed_email_path)
+    #             .clean_urls()
+    #             .add_domain_column()
+    #             .add_has_url_column()
+    #             .add_text_column()
+    #             .add_theme_column()
+    #             .add_source_column())
+    #
+    # fb_yt_converter = {'theme': lambda x: x.strip("[]").replace("'", "").strip().split(', ')}
+    # fb_df = UrlDF.from_csv(facebook_url_info_path, 1, fb_yt_converter, parse_dates=None)
+    # yt_df = UrlDF.from_csv(youtube_url_info_path, 1, fb_yt_converter, parse_dates=None)
