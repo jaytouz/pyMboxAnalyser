@@ -469,7 +469,7 @@ class EmailDTM(EmailDfBaseClass):
         est apparu au moins une fois"""
         df = self.df.copy()
         df[df >= 1] = 1
-        return EmailDTM(df, self.corpus_df).df
+        return EmailDTM(df, self.corpus_df)
 
 
     def proportion(self, email_per_day):
