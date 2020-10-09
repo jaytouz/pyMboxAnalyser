@@ -11,3 +11,6 @@ Furthermore, specific analytic tools where build to clean and search the data fo
 - data : Data for input in the analysis (.mbox, theme_words.csv)
 - output : Graph, csv, logs, pickles (not everything is on the github for privacy concerns)
 - notebook : final version of the code used for the article with Radio-Canada
+
+Article link
+https://ici.radio-canada.ca/info/2020/10/pandemie-decrypteurs-courriels-complot-covid-19-coronavirus-fausses-nouvelles/?fbclid=IwAR0PQZd9Y_q0ZYH6ylJp0ieDvI_dZnMqaIoevYZD9hOlFtG2s0dkBvuGDMk
